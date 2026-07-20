@@ -251,7 +251,7 @@
       document.getElementById('route-crash-count').innerText = itemsToRender.length;
     }
 
-    Papa.parse('/data/crashdata.csv', {
+    Papa.parse('data/crashdata.csv', {
       download: true,
       header: true,
       skipEmptyLines: true,
