@@ -471,6 +471,11 @@
 
         routingControl = L.Routing.control({
           waypoints: [startLatLng, endLatLng],
+          // Use a specialized bike-optimized OSRM server
+          router: L.Routing.osrmv1({
+            serviceUrl: 'https://routing.openstreetmap.de/routed-bike/route/v1',
+            profile: 'bike' 
+          }),
           lineOptions: {
             styles: [{ color: '#2563eb', weight: 6, opacity: 0.85 }]
           },
