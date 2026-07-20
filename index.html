@@ -112,7 +112,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
   <script>
     console.log("Script starting");
@@ -251,28 +250,27 @@
       document.getElementById('route-crash-count').innerText = itemsToRender.length;
     }
 
-    Papa.parse('data/crashdata.csv', {
-      download: true,
-      header: true,
-      skipEmptyLines: true,
-      complete: function(results) {
-        crashData = results.data
+
+    // Add an async function to handle loading
+    async function loadCrashData() {
+      try {
+        const response = await fetch('data/crashdata.json');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
+        const data = await response.json();
+        
+        // Process data efficiently
+        crashData = data
           .map(row => {
-            const rowValues = Object.values(row);
-            const coordString = rowValues.find(val => typeof val === 'string' && val.includes(',') && !isNaN(parseFloat(val.split(',')[0])));
-
-            if (!coordString) return null;
-
-            const [latStr, lngStr] = coordString.split(',');
-            const lat = parseFloat(latStr?.trim());
-            const lng = parseFloat(lngStr?.trim());
+            const lat = parseFloat(row.Coordinates?.split(',')[0]);
+            const lng = parseFloat(row.Coordinates?.split(',')[1]);
 
             if (!isNaN(lat) && !isNaN(lng)) {
+              const rowValues = Object.values(row);
               const severityInfo = parseSeverity(rowValues);
               
               return {
-                date: row['Crash Date'] || row['Date'] || 'Unknown Date',
-                town: row['City/Town'] || 'Burlington',
+                date: row['Crash Date'] || 'Unknown Date',
                 address: parseAddress(row),
                 severity: severityInfo.label,
                 severityRank: severityInfo.rank,
@@ -285,16 +283,17 @@
           })
           .filter(item => item !== null);
 
-        document.getElementById('total-crash-info').innerText = 
-          `Loaded ${crashData.length} crashes from CSV`;
-
+        document.getElementById('total-crash-info').innerText = `Loaded ${crashData.length} crashes from JSON`;
         renderCrashMarkers(crashData);
-      },
-      error: function(err) {
-        console.error('Failed to load CSV:', err);
-        document.getElementById('total-crash-info').innerText = 'Error loading CSV data';
+        
+      } catch (err) {
+        console.error('Failed to load JSON:', err);
+        document.getElementById('total-crash-info').innerText = 'Error loading JSON data';
       }
-    });
+    }
+
+    // Call the function
+    loadCrashData();
 
     async function geocode(address) {
       // Define Vermont's bounding box: [min_lng, min_lat, max_lng, max_lat]
