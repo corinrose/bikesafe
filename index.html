@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Burlington Route Crash Analysis</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 440px;
+      height: 100%;
+      background-color: #f4f4f5;
+      border-right: 1px solid #e4e4e7;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      z-index: 1000;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #sidebar h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #18181b;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #52525b;
+    }
+
+    input {
+      padding: 0.55rem;
+      font-size: 0.9rem;
+      border: 1px solid #d4d4d8;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 0.65rem;
+      background-color: #2563eb;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    button.secondary {
+      background-color: #e4e4e7;
+      color: #27272a;
+    }
+
+    button.secondary:hover {
+      background-color: #d4d4d8;
+    }
+
+    .stats-card {
+      background: white;
+      border: 1px solid #e4e4e7;
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .stats-card .count {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: #dc2626;
+    }
+
+    .stats-card .label {
+      font-size: 0.8rem;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Dangerous Intersections & Details */
+    .analysis-card {
+      background: white;
+      border: 1px solid #e4e4e7;
+      border-radius: 6px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .analysis-card h2 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #3f3f46;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .intersection-item {
+      border: 1px solid #e4e4e7;
+      background-color: #ffffff;
+      border-radius: 6px;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .intersection-item:hover {
+      border-color: #2563eb;
+      background-color: #eff6ff;
+    }
+
+    .intersection-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #18181b;
+    }
+
+    .intersection-title {
+      line-height: 1.25;
+      flex: 1;
+    }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.45rem;
+      border-radius: 9999px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-fatal { background: #fee2e2; color: #991b1b; }
+    .badge-injury { background: #ffedd5; color: #c2410c; }
+    .badge-property { background: #dbeafe; color: #1e40af; }
+
+    .crash-list {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid #f4f4f5;
+    }
+
+    .crash-subitem {
+      font-size: 0.75rem;
+      color: #52525b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Legend Styling */
+    .legend-card {
+      background: white;
+      border: 1px solid #e4e4e7;
+      border-radius: 6px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .legend-card h2 {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #3f3f46;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .legend-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .legend-section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #71717a;
+      border-bottom: 1px solid #f4f4f5;
+      padding-bottom: 0.2rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.8rem;
+      color: #27272a;
+    }
+
+    .legend-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    #map {
+      flex: 1;
+      height: 100%;
+    }
+
+    .leaflet-routing-container {
+      display: none;
+    }
+
+    .custom-svg-icon {
+      background: transparent;
+      border: none;
+    }
+
+    .custom-svg-icon svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.4));
+    }
+
+    /* Responsive Mobile Layout */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column-reverse;
+        overflow: auto;
+      }
+
+      #map {
+        width: 100%;
+        height: 50vh;
+        flex: none;
+      }
+
+      #sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 50vh;
+        border-right: none;
+        border-top: 1px solid #e4e4e7;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <aside id="sidebar">
+    <h1>Route Crash Analysis</h1>
+
+    <form id="route-form">
+      <div class="form-group">
+        <label for="start">Start Location</label>
+        <input 
+          type="text" 
+          id="start" 
+          placeholder="e.g. 149 Church St, Burlington, VT" 
+          required 
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="end">End Location</label>
+        <input 
+          type="text" 
+          id="end" 
+          placeholder="e.g. UVM Medical Center, Burlington, VT" 
+          required 
+        />
+      </div>
+
+      <div class="btn-group">
+        <button type="submit">Analyze Route</button>
+        <button type="button" id="reset-btn" class="secondary">Show All</button>
+      </div>
+    </form>
+
+    <div class="stats-card">
+      <div class="label">Crashes Displayed</div>
+      <div id="route-crash-count" class="count">0</div>
+      <div id="total-crash-info" style="font-size: 0.75rem; color: #a1a1aa; margin-top: 0.25rem;">
+        Loading crash data...
+      </div>
+    </div>
+
+    <!-- High Risk Spots Breakdown -->
+    <div class="analysis-card" id="intersections-card" style="display: none;">
+      <h2>High Risk Locations on Route</h2>
+      <div id="intersections-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
+    </div>
+
+    <!-- Map Key / Legend -->
+    <div class="legend-card">
+      <h2>Map Key</h2>
+
+      <div class="legend-section">
+        <div class="legend-section-title">Crash Severity (Color)</div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#991b1b" stroke="#ffffff" stroke-width="2"/></svg>
+          </span>
+          Fatal / Serious Injury
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#f97316" stroke="#ffffff" stroke-width="2"/></svg>
+          </span>
+          Minor Injury
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="#2563eb" stroke="#ffffff" stroke-width="2"/></svg>
+          </span>
+          Property Damage Only
+        </div>
+      </div>
+
+      <div class="legend-section">
+        <div class="legend-section-title">Crash Type (Symbol)</div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3 L22 20 L2 20 Z" fill="#52525b" stroke="#ffffff" stroke-width="1.5"/></svg>
+          </span>
+          Pedestrian
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" fill="#52525b" stroke="#ffffff" stroke-width="1.5"/></svg>
+          </span>
+          Bicycle / Cyclist
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#52525b" stroke="#ffffff" stroke-width="1.5"/></svg>
+          </span>
+          Motor Vehicle / Other
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="map"></main>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+  <!-- PapaParse -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <script>
+    const map = L.map('map').setView([44.4759, -73.2121], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Recalculate map tile sizes if viewport updates or orientations shift
+    window.addEventListener('resize', () => {
+      map.invalidateSize();
+    });
+
+    let crashData = [];
+    let crashLayerGroup = L.layerGroup().addTo(map);
+    let highlightLayerGroup = L.layerGroup().addTo(map);
+    let routingControl = null;
+
+    const BUFFER_METERS = 30;
+
+    function parseSeverity(rowValues) {
+      const fullRowText = rowValues.join(' ').toLowerCase();
+
+      if (fullRowText.includes('fatal') || fullRowText.includes('serious injury')) {
+        return { label: 'Fatal / Serious Injury', color: '#991b1b', rank: 3 };
+      }
+      if (fullRowText.includes('injury') || fullRowText.includes('minor injury')) {
+        return { label: 'Injury', color: '#f97316', rank: 2 };
+      }
+      return { label: 'Property Damage Only', color: '#2563eb', rank: 1 };
+    }
+
+    function parseCrashType(rowValues) {
+      const fullRowText = rowValues.join(' ').toLowerCase();
+
+      if (fullRowText.includes('pedestrian') || fullRowText.includes('ped ')) {
+        return 'pedestrian';
+      }
+      if (fullRowText.includes('bike') || fullRowText.includes('bicycle') || fullRowText.includes('cyclist')) {
+        return 'bike';
+      }
+      return 'vehicle';
+    }
+
+    function isValidStreetName(str) {
+      if (!str) return false;
+      const s = str.trim();
+      const lower = s.toLowerCase();
+
+      if (!s || lower === 'n/a' || lower === 'null' || !isNaN(parseFloat(s))) return false;
+
+      if (/at \d{1,2}:\d{2}/i.test(s)) return false;
+      if (/^(january|february|march|april|may|june|july|august|september|october|november|december)/i.test(s)) return false;
+      if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(s)) return false;
+
+      if (lower === 'burlington' || lower === 'burlington, vt' || lower === 'burlington city') return false;
+      if (lower.includes('property damage') || lower.includes('minor injury') || lower.includes('fatal')) return false;
+
+      return true;
+    }
+
+    function parseAddress(row) {
+      const streetRaw = row['Address'] || '';
+      const crossRaw = row['Intersection with'] || row['Intersection With'] || row['Intersection'] || row['Cross Street'] || '';
+
+      const street = isValidStreetName(streetRaw) ? streetRaw.trim() : '';
+      const cross = isValidStreetName(crossRaw) ? crossRaw.trim() : '';
+
+      if (street && cross && street.toLowerCase() !== cross.toLowerCase()) {
+        return `${street} & ${cross}`;
+      }
+      if (street) return `${street} Area`;
+      if (cross) return `${cross} Area`;
+
+      return 'Unknown Location';
+    }
+
+    function createMarkerIcon(type, color) {
+      const size = 16;
+      const strokeWidth = 1.5;
+      const strokeColor = '#ffffff';
+      
+      let svgPath = '';
+
+      if (type === 'pedestrian') {
+        svgPath = `<polygon points="${size/2},2 ${size-2},${size-2} 2,${size-2}" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
+      } else if (type === 'bike') {
+        svgPath = `<rect x="2" y="2" width="${size-4}" height="${size-4}" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
+      } else {
+        const radius = (size / 2) - 2;
+        svgPath = `<circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="${color}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
+      }
+
+      const svgHtml = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${svgPath}</svg>`;
+
+      return L.divIcon({
+        className: 'custom-svg-icon',
+        html: svgHtml,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+    }
+
+    function renderCrashMarkers(itemsToRender) {
+      crashLayerGroup.clearLayers();
+
+      itemsToRender.forEach(item => {
+        const icon = createMarkerIcon(item.crashType, item.color);
+        const marker = L.marker(item.latLng, { icon: icon });
+
+        marker.bindPopup(`
+          <b>${item.address}</b><br/>
+          Type: <b style="text-transform: capitalize;">${item.crashType}</b><br/>
+          Severity: ${item.severity}<br/>
+          Date: ${item.date}
+        `);
+
+        crashLayerGroup.addLayer(marker);
+      });
+
+      document.getElementById('route-crash-count').innerText = itemsToRender.length;
+    }
+
+    Papa.parse('/data/crashdata.csv', {
+      download: true,
+      header: true,
+      skipEmptyLines: true,
+      complete: function(results) {
+        crashData = results.data
+          .map(row => {
+            const rowValues = Object.values(row);
+            const coordString = rowValues.find(val => typeof val === 'string' && val.includes(',') && !isNaN(parseFloat(val.split(',')[0])));
+
+            if (!coordString) return null;
+
+            const [latStr, lngStr] = coordString.split(',');
+            const lat = parseFloat(latStr?.trim());
+            const lng = parseFloat(lngStr?.trim());
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+              const severityInfo = parseSeverity(rowValues);
+              
+              return {
+                date: row['Crash Date'] || row['Date'] || 'Unknown Date',
+                town: row['City/Town'] || 'Burlington',
+                address: parseAddress(row),
+                severity: severityInfo.label,
+                severityRank: severityInfo.rank,
+                color: severityInfo.color,
+                crashType: parseCrashType(rowValues),
+                latLng: L.latLng(lat, lng)
+              };
+            }
+            return null;
+          })
+          .filter(item => item !== null);
+
+        document.getElementById('total-crash-info').innerText = 
+          `Loaded ${crashData.length} crashes from CSV`;
+
+        renderCrashMarkers(crashData);
+      },
+      error: function(err) {
+        console.error('Failed to load CSV:', err);
+        document.getElementById('total-crash-info').innerText = 'Error loading CSV data';
+      }
+    });
+
+    async function geocode(address) {
+      // Define Vermont's bounding box: [min_lng, min_lat, max_lng, max_lat]
+      const vtViewbox = '-73.4377,42.7269,-71.4646,45.0167';
+      
+      // Ensure query is interpreted as being in Vermont
+      const query = address.toLowerCase().includes('vt') || address.toLowerCase().includes('vermont') 
+                    ? address 
+                    : `${address}, VT`;
+
+      // Use viewbox and bounded=1 for efficient, location-restricted geocoding
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&viewbox=${vtViewbox}&bounded=1&limit=1`;
+      
+      const res = await fetch(url, { 
+        headers: { 'User-Agent': 'BurlingtonCrashAnalysisApp/1.0' }
+      });
+      const data = await res.json();
+      
+      if (data && data.length > 0) {
+        return L.latLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
+      }
+      
+      throw new Error(`Address not found in Vermont: "${address}"`);
+    }
+
+    function distanceToSegmentMeters(latlng, latlngA, latlngB) {
+      const p = map.latLngToLayerPoint(latlng);
+      const p1 = map.latLngToLayerPoint(latlngA);
+      const p2 = map.latLngToLayerPoint(latlngB);
+
+      const pixelDistance = L.LineUtil.pointToSegmentDistance(p, p1, p2);
+
+      const centerPoint = map.getCenter();
+      const pointA = map.latLngToLayerPoint(centerPoint);
+      const pointB = L.point(pointA.x + pixelDistance, pointA.y);
+      
+      return map.layerPointToLatLng(pointA).distanceTo(map.layerPointToLatLng(pointB));
+    }
+
+    function clusterIntersections(matchingCrashes) {
+      const map = new Map();
+
+      matchingCrashes.forEach(crash => {
+        const key = crash.address;
+        if (key === 'Unknown Location') return;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            name: key,
+            centerLatLng: crash.latLng,
+            maxSeverityRank: crash.severityRank,
+            crashes: []
+          });
+        }
+
+        const cluster = map.get(key);
+        cluster.crashes.push(crash);
+        if (crash.severityRank > cluster.maxSeverityRank) {
+          cluster.maxSeverityRank = crash.severityRank;
+        }
+      });
+
+      const clusters = Array.from(map.values());
+
+      clusters.sort((a, b) => {
+        if (b.maxSeverityRank !== a.maxSeverityRank) {
+          return b.maxSeverityRank - a.maxSeverityRank;
+        }
+        return b.crashes.length - a.crashes.length;
+      });
+
+      return clusters;
+    }
+
+    function renderIntersectionsList(clusters) {
+      const card = document.getElementById('intersections-card');
+      const container = document.getElementById('intersections-list');
+      container.innerHTML = '';
+
+      if (clusters.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'flex';
+
+      const topClusters = clusters.slice(0, 5);
+
+      topClusters.forEach((cluster, idx) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'intersection-item';
+
+        let badgeClass = 'badge-property';
+        if (cluster.maxSeverityRank === 3) {
+          badgeClass = 'badge-fatal';
+        } else if (cluster.maxSeverityRank === 2) {
+          badgeClass = 'badge-injury';
+        }
+
+        const crashItemsHtml = cluster.crashes.map(c => `
+          <div class="crash-subitem">
+            <span><b>${c.date}</b> (${c.crashType})</span>
+            <span style="color: ${c.color}; font-weight: 600;">${c.severity}</span>
+          </div>
+        `).join('');
+
+        itemEl.innerHTML = `
+          <div class="intersection-header">
+            <span class="intersection-title">${idx + 1}. ${cluster.name}</span>
+            <span class="badge ${badgeClass}">${cluster.crashes.length} Crash${cluster.crashes.length > 1 ? 'es' : ''}</span>
+          </div>
+          <div class="crash-list">
+            ${crashItemsHtml}
+          </div>
+        `;
+
+        itemEl.addEventListener('click', () => {
+          highlightLayerGroup.clearLayers();
+
+          L.circle(cluster.centerLatLng, {
+            radius: 35,
+            color: '#dc2626',
+            fillColor: '#f87171',
+            fillOpacity: 0.35,
+            weight: 3
+          }).addTo(highlightLayerGroup);
+
+          map.flyTo(cluster.centerLatLng, 17, { duration: 1.2 });
+
+          L.popup()
+            .setLatLng(cluster.centerLatLng)
+            .setContent(`<b>${cluster.name}</b><br/>Total Crashes: ${cluster.crashes.length}`)
+            .openOn(map);
+        });
+
+        container.appendChild(itemEl);
+      });
+    }
+
+    function analyzeCrashesAlongRoute(routeCoordinates) {
+      const matchingCrashes = crashData.filter(item => {
+        for (let i = 0; i < routeCoordinates.length - 1; i++) {
+          const p1 = routeCoordinates[i];
+          const p2 = routeCoordinates[i + 1];
+
+          const dist = distanceToSegmentMeters(item.latLng, p1, p2);
+          if (dist <= BUFFER_METERS) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      renderCrashMarkers(matchingCrashes);
+
+      const clusters = clusterIntersections(matchingCrashes);
+      renderIntersectionsList(clusters);
+    }
+
+    document.getElementById('route-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const startText = document.getElementById('start').value;
+      const endText = document.getElementById('end').value;
+
+      try {
+        const startLatLng = await geocode(startText);
+        const endLatLng = await geocode(endText);
+
+        if (routingControl) {
+          map.removeControl(routingControl);
+        }
+        highlightLayerGroup.clearLayers();
+
+        routingControl = L.Routing.control({
+          waypoints: [startLatLng, endLatLng],
+          lineOptions: {
+            styles: [{ color: '#2563eb', weight: 6, opacity: 0.85 }]
+          },
+          addWaypoints: false,
+          draggableWaypoints: false,
+          fitSelectedRoutes: true
+        }).addTo(map);
+
+        routingControl.on('routesfound', (e) => {
+          const route = e.routes[0];
+          analyzeCrashesAlongRoute(route.coordinates);
+        });
+
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      if (routingControl) {
+        map.removeControl(routingControl);
+        routingControl = null;
+      }
+      highlightLayerGroup.clearLayers();
+      document.getElementById('start').value = '';
+      document.getElementById('end').value = '';
+      document.getElementById('intersections-card').style.display = 'none';
+      renderCrashMarkers(crashData);
+    });
+  </script>
+</body>
+</html>
